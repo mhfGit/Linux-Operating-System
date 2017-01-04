@@ -1,0 +1,124 @@
+Dank_Squad ECE 391 Bug Log
+
+
+***************CHECKPOINT 1**********************
+1)Interrupts weren't being detected   [3/11/16]
+	-Solution 1: Had to utilize the "ldgt" and "lidt" commands in "boot.S" to have the interrupt and global descriptor tables loaded.
+		-Time: ~1 hour to find
+
+	-Solution 2: Some values weren't bitshifted properly (off by 1) in "8259.c"
+		-Time: ~1 hour to find
+
+	-Solution 3: Turns out that moving around labels in the "x86_desc.S" was a bad idea. We moved the labels back to what they were originally
+		-Time: ~couple hours (a TA eventually pointed this out to us)
+
+2)RTC wasn't working (text wasn't alternating)  [3/12/16]
+
+	-Solution: We didn't do an "enable_irq(8)" when we initialized the RTC (IRQ 8 corresponds to RTC).
+		-Time: ~couple hours to find
+
+3)Accessing a non-paged virtual address wasn't triggering page fault. 	[3/12/16]
+	-Solution: Switched assembly instruction line from mov %ebp, %esp to mov %esp, %ebp
+		-Time: ~4hours
+
+4)Exceptions weren't being generated	[3/13/16]
+	-Solution: Changed gate type of IDT entries from Task to Interrupt.
+		-Time: ~1 hour
+
+5)Paging wasn't working correctly	[3/13/16]
+	-Solution: Had to set all other flags for paging before enabling paging.
+		-Time: ~1 hour
+
+
+***************CHECKPOINT 2**********************
+1)"rtc_read()" didn't work properly  [3/24/16]
+	-Solution: Initial implementation was to use an infinite while loop [while(1)] and then an if conditional to check for whether the
+	next interrupt occurs. Changed the implementation to have a while loop based on a global variable that kept track of a generated interrupt.
+		-Time: ~1 day
+
+2)read_data() was producing output that did not resemble the file it was trying to read much at all. [3/25/16]
+	-Solution: When incrementing the pointer that would contain the file data, we were incrementing by 1 while being an integer
+			   data type. This skipped four bytes at a time when in actuality, we wanted to read every byte. This was fixed by type casting
+			   to a char type before incrementing.
+	   -Time: 2 hours
+
+3)term_write() was using keyboard functions to write to terminal which made outputting file contents incorrect [3/25/16]
+	-Solution: Refactored term_write to be independent of the keyboard presses.
+		-Time: ~3 hours
+
+4)The read_directory function was not producing the correct output. frame0.txt was missing. Things seemed out of order.
+	-Solution: We were reading the directory by incrementing through the inode blocks rather than the desired indices in the boot block. We thought that
+			   the inode index and the file indices in the boot block were the same thing. Changed to file indices.
+		-Time: 1 hour
+
+
+***************CHECKPOINT 3**********************
+1)"halt()" didn't work properly (particularly when it came to exiting a shell)   [4/8/16]
+	-Solution: Initially, we had inline assembly code at the end of the method that included a "ret" instruction (we have a similar implementation at the end of the "execute()" function). We removed this instruction as it wasn't returning to the interrupt handler properly.
+		-Time: ~2 days
+
+2)File operation table's were allocated incorrectly	[4/9/16]
+	-Solution: Changed the number of different tables, instead used one general file operations table
+		-Time: ~2 hours
+
+3)Initial Shell Call from kernel.c was not working 	[4/9/16]
+	-Solution: Had to introduce a special case for opening the first shell since the process number and current_PCB values would be different then a regular execute call.
+		-Time: ~3 hours
+
+4)Halt would not return to its parent program. It would either page fault or do something unexpected after halting. [4/13/16]
+	-Solution: We were not saving the correct ebp and esp in execute. So when halt jumped back to execute and then eventually did an IRET, the stack was not correct. The IRET context
+		       was not there so the program jumped into oblivion. We believe that correctly doing the tss.esp would do this for us, but we had to actually save the esp of the kernel stack.
+		-Time: 2 hours
+
+5)Any reference to current_PCB was incorrect in execute(). Incorrect PID, for instance. [4/13/16]
+	-Solution: Manually recalculated the current_PCB based on its location in the kernel stack. We are guessing that referencing the current_PCB from the kernel data
+			   outside of the kernel stack for this program produced some errors(?).
+		-Time: 5 hours
+
+
+***************CHECKPOINT 4**********************
+1)Jump table for interrupt handler wasn't simplfied  [4/16/16]
+	-Solution: Though not really a bug, TA told us to simplify our jump table to get rid of the "spaghetti" implementation.
+		-Time: After our demo
+
+2)"vidmap()" wasn't working properly    [4/17/16]
+	-Solution: Initially we were inserting a page for every call to this function. Instead we simply needed to set the passed in parameter (a pointer) to the correct memory address.
+		-Time: ~couple hours
+
+3)RTC was checking the rate instead of frequency [4/18/16]
+	-Solution: Modified the RTC to take input frequency and checked bounds for correct frequency.
+		-Time: 1 hour
+
+4)Fish was not displaying after we implemented vidmap.	[4/18/16]
+	-Solution: We had an incorrect flag in the process of creating the page for the fish program. We had set the 4MB page flag and returned a 4KB page. Fixed.
+	    -Time: 30 minutes
+
+5)Parsing the arguments for getArgs wasn't working properly.	[4/18/16]
+	-Solution: The arguements from the execute called were not correctly parsed. To fix this we had to change some logic involving removing the white
+			   spaces.
+		-Time: 30 minutes
+
+***************CHECKPOINT 5**********************
+1)PIT wasn't working properly   [4/29/16]
+	-Solution: Initially misread chip spec on the OSDev page. Needed to change the Access Mode bits on the Command byte (we switched from Terminal Count mode to Square Wave mode).
+		-Time: ~2 hours
+
+2)Fish wasn't displaying to any buffer passed in 	[4/30/16]
+	-Solution: Had to change the physical address that the page was pointing to. Changed it to be above the video memory page.
+		-Time: ~6 hours
+
+3)Cursor wasn't displaying to terminals correctly	[4/30/16]
+	-Solution: Had to change the physical address that the page was pointing to. Changed it to be above the video memory page.
+		-Time: ~6 hours
+
+4)Terminal write was incorrectly printing to other terminals 	[4/30/16]
+	-Solution: Had to make sure that keypress interrupts weren't calling terminal write. 
+		-Time: ~3 hours
+
+5)Problems with halt in a background terminal 	[5/1/16]
+	-Solution: TBD
+		-Time: ~8 hours
+
+
+
+
